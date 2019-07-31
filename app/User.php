@@ -2,9 +2,8 @@
 
 namespace App;
 
-use Illuminate\Notifications\Notifiable;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
@@ -36,4 +35,19 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public function spaces()
+    {
+        return $this->belongsToMany("App\Space")->withTimestamps()->withPivot('rights');
+    }
+
+    public function channels()
+    {
+        return $this->belongsToMany("App\Channel")->withTimestamps()->withPivot('rights');
+    }
+
+    public function messages()
+    {
+        return $this->belongsToMany("App\Message")->withTimestamps()->withPivot("is_author", "read");
+    }
 }
