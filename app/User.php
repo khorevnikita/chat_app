@@ -14,9 +14,9 @@ class User extends Authenticatable
      *
      * @var array
      */
-    protected $fillable = [
-        'name', 'email', 'password',
-    ];
+    /*protected $fillable = [
+        'name', 'email', 'password', 'surname', 'username',
+    ];*/
 
     /**
      * The attributes that should be hidden for arrays.
@@ -24,7 +24,7 @@ class User extends Authenticatable
      * @var array
      */
     protected $hidden = [
-        'password', 'remember_token',
+        'password', 'remember_token', 'api_token'
     ];
 
     /**
@@ -49,5 +49,10 @@ class User extends Authenticatable
     public function messages()
     {
         return $this->belongsToMany("App\Message")->withTimestamps()->withPivot("is_author", "read");
+    }
+
+    public static function findByToken($token)
+    {
+        return User::where("api_token", $token)->first();
     }
 }
