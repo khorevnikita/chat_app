@@ -51,8 +51,18 @@ class User extends Authenticatable
         return $this->belongsToMany("App\Message")->withTimestamps()->withPivot("is_author", "read");
     }
 
-    public static function findByToken($token)
+    public function find(){
+
+    }
+
+    public function findByToken($token)
     {
         return User::where("api_token", $token)->first();
+    }
+
+    public function authUser()
+    {
+        $token = request()->header('authorization');
+        return $this->findByToken($token);
     }
 }
