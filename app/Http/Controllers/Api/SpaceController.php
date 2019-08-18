@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Channel;
 use App\Http\Controllers\Controller;
 use App\Space;
 use App\User;
@@ -53,7 +52,15 @@ class SpaceController extends Controller
         $user = $this->user;
         $space = Space::whereHas('users', function ($q) use ($user) {
             $q->where("users.id", $user->id);
-        })->with("channels", "users")->where("subdomain", $subdomain)->first();
+        })->with(["users" => function ($q) use ($user) {
+            $q->where("users.id", "!=", $user->id);
+        }])->with(['channels' => function ($q) use ($user) {
+            $q->where(function ($q) use ($user) {
+                $q->where("access", "visible")->orWhereHas("users", function ($q) use ($user) {
+                    $q->where("users.id", $user->id);
+                });
+            })->where("type", "public");
+        }])->where("subdomain", $subdomain)->first();
 
         if (!$space) {
             return response()->json([
@@ -61,266 +68,24 @@ class SpaceController extends Controller
                 'msg' => 'space has not been found'
             ]);
         }
+        $badges = [];
+        foreach ($space->channels as $channel) {
+            $badges[$channel->id] = $user->newMessagesCount($channel->id);
+        }
+
+        foreach ($space->users as $member) {
+            // try to find unread messages in private channels
+
+            //$member->private_channel_id = $space->channels->where("type", "private")->where('channels');
+        }
+
         return response()->json([
             'space' => $space->toArray(),
-            'me'=>$user->only(['name',"surname",'avatar']),
+            'me' => $user->only(['name', "surname", 'avatar', 'id']),
+            'badges' => $badges,
             "status" => 1
         ]);
     }
-
-    public function channelCreate($subdomain, Request $request)
-    {
-        /**
-         * Подобную проверку вывести в отдельный посредник
-         */
-        $space = $this->user->spaces->where("subdomain", $subdomain)->first();
-        if (!$space) {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Has no rights'
-            ]);
-        }
-        $request->validate([
-            'name' => "required|max:100",
-            'access' => "required|in:visible,hidden"
-        ]);
-        $channel = new Channel();
-        $channel->name = $request->name;
-        $channel->access = $request->access;
-        $channel->space_id = $space->id;
-        $channel->type = "public";
-        $channel->save();
-
-        $attach = [];
-        foreach ($request->users as $user) {
-            $attach[$user['id']] = ['rights' => "member"];
-        }
-        $attach[$this->user->id] = ['rights' => "founder"];
-        $channel->users()->attach($attach);
-
-        return response()->json([
-            'status' => 1,
-            'channel_id' => $channel->id
-        ]);
-
-    }
-
-    public function channelMessages($subdomain, $channel_id)
-    {
-        $user = $this->user;
-        $space = Space::whereHas('users', function ($q) use ($user) {
-            $q->where("users.id", $user->id);
-        })->where("subdomain", $subdomain)->first();
-
-        $channel = $space->channels()->with("users", "messages",'messages.users')->where("id", $channel_id)->first();
-        if (!$channel) {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'channel has not been found'
-            ]);
-        }
-        return response()->json([
-            'status' => 1,
-            'channel' => $channel
-        ]);
-
-    }
-
-    public function channelUsers($subdomain, $channel_id)
-    {
-        /**
-         * Подобную проверку вывести в отдельный посредник
-         */
-        $space = $this->user->spaces->where("subdomain", $subdomain)->first();
-        if (!$space) {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Has no rights'
-            ]);
-        }
-        $channel = $space->channels->find($channel_id);
-        if (!$channel) {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Channel not found'
-            ]);
-        }
-        $users = $channel->users()->get(['users.id', 'users.name', 'users.surname', 'users.avatar']);
-
-        $is_founder = $users->where("pivot.rights", 'founder')->first()->id == $this->user->id;
-
-        return response()->json([
-            'status' => 1,
-            'users' => $users,
-            'is_founder' => $is_founder,
-            'me_id' => $this->user->id,
-        ]);
-    }
-
-    public function channelUserMakeAdmin($subdomain, $channel_id, Request $request)
-    {
-        /**
-         * Подобную проверку вывести в отдельный посредник
-         */
-        $space = $this->user->spaces->where("subdomain", $subdomain)->first();
-        if (!$space) {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Has no rights'
-            ]);
-        }
-        $channel = $space->channels->find($channel_id);
-        if (!$channel) {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Channel not found'
-            ]);
-        }
-
-        if ($channel->users->find($this->user->id)->pivot->rights !== "founder") {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Has no rights'
-            ]);
-        }
-
-        $channel->users()->updateExistingPivot($request->user_id, ['rights' => "founder"]);
-        $channel->users()->updateExistingPivot($this->user->id, ['rights' => "member"]);
-        return response()->json([
-            'status' => 1,
-        ]);
-    }
-
-    public function channelUserKickOut($subdomain, $channel_id, Request $request)
-    {
-        /**
-         * Подобную проверку вывести в отдельный посредник
-         */
-        $space = $this->user->spaces->where("subdomain", $subdomain)->first();
-        if (!$space) {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Has no rights'
-            ]);
-        }
-        $channel = $space->channels->find($channel_id);
-        if (!$channel) {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Channel not found'
-            ]);
-        }
-        if ($channel->users->find($this->user->id)->pivot->rights !== "founder") {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Has no rights'
-            ]);
-        }
-
-        $channel->users()->detach($request->user_id);
-
-        $deleted = false;
-        if ($channel->users->count() == 2) {
-            $deleted = $channel->delete();
-        }
-
-        return response()->json([
-            'status' => 1,
-            'channel_deleted' => $deleted
-        ]);
-    }
-
-    public function channelInfo($subdomain, $channel_id)
-    {
-        /**
-         * Подобную проверку вывести в отдельный посредник
-         */
-        $space = $this->user->spaces->where("subdomain", $subdomain)->first();
-        if (!$space) {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Has no rights'
-            ]);
-        }
-        $channel = $space->channels->find($channel_id);
-        if (!$channel) {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Channel not found'
-            ]);
-        }
-
-        return response()->json([
-            'status' => 1,
-            'channel' => $channel->only(['id', 'name', 'access'])
-        ]);
-    }
-
-    public function channelUpdate($subdomain, $channel_id, Request $request)
-    {
-        /**
-         * Подобную проверку вывести в отдельный посредник
-         */
-        $space = $this->user->spaces->where("subdomain", $subdomain)->first();
-        if (!$space) {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Has no rights'
-            ]);
-        }
-        $channel = $space->channels->find($channel_id);
-        if (!$channel) {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Channel not found'
-            ]);
-        }
-        if ($channel->users->find($this->user->id)->pivot->rights !== "founder") {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Has no rights'
-            ]);
-        }
-        $channel->name = $request->name;
-        $channel->access = $request->access;
-        $channel->save();
-        return response()->json([
-            'status' => 1,
-        ]);
-
-    }
-
-    public function channelDelete($subdomain, $channel_id, Request $request)
-    {
-        /**
-         * Подобную проверку вывести в отдельный посредник
-         */
-        $space = $this->user->spaces->where("subdomain", $subdomain)->first();
-        if (!$space) {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Has no rights'
-            ]);
-        }
-        $channel = $space->channels->find($channel_id);
-        if (!$channel) {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Channel not found'
-            ]);
-        }
-        if ($channel->users->find($this->user->id)->pivot->rights !== "founder") {
-            return response()->json([
-                'status' => 0,
-                'msg' => 'Has no rights'
-            ]);
-        }
-        $channel->delete();
-        return response()->json([
-            'status' => 1,
-        ]);
-    }
-
 
     public function users($subdomain, Request $request)
     {

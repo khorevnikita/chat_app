@@ -24,7 +24,8 @@ class User extends Authenticatable
      * @var array
      */
     protected $hidden = [
-        'password', 'remember_token', 'api_token'
+        'password', 'remember_token', 'api_token',
+        'email', 'created_at', "email_verified_at", 'updated_at', "deleted_at", "phone"
     ];
 
     /**
@@ -69,5 +70,14 @@ class User extends Authenticatable
     public function getAvatarAttribute($value)
     {
         return $value?:'https://www.nicepng.com/png/detail/164-1649946_happy-smiling-emoticon-face-vector-smile.png';
+    }
+
+    public function newMessagesCount($channel_id = null)
+    {
+        if (!$channel_id) {
+            return $this->messages->where("pivot.read", 0)->count();
+        }
+
+        return $this->messages->where("channel_id", $channel_id)->where("pivot.read", 0)->count();
     }
 }

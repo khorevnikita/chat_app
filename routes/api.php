@@ -22,15 +22,18 @@
             Route::group(['prefix' => '{subdomain}'], function () {
                 Route::get("/", "Api\SpaceController@show");
                 Route::get("/users", "Api\SpaceController@users");
+                Route::get("/get-user-channel", "Api\ChannelController@getChannelFromUser");
                 Route::group(['prefix' => 'channels'], function () {
-                    Route::post("/create", "Api\SpaceController@channelCreate");
-                    Route::get("/{id}", "Api\SpaceController@channelMessages");
-                    Route::get("/{id}/info", "Api\SpaceController@channelInfo");
-                    Route::get("/{id}/users", "Api\SpaceController@channelUsers");
-                    Route::post("/{id}/update", "Api\SpaceController@channelUpdate");
-                    Route::post("/{id}/delete", "Api\SpaceController@channelDelete");
-                    Route::post("/{id}/users/make-admin", "Api\SpaceController@channelUserMakeAdmin");
-                    Route::post("/{id}/users/kick-out", "Api\SpaceController@channelUserKickOut");
+                    Route::post("/create", "Api\ChannelController@channelCreate");
+                    Route::get("/{id}", "Api\ChannelController@channelMessages");
+                    Route::get("/{id}/info", "Api\ChannelController@channelInfo");
+                    Route::get("/{id}/users", "Api\ChannelController@channelUsers");
+                    Route::post("/{id}/update", "Api\ChannelController@channelUpdate");
+                    Route::post("/{id}/delete", "Api\ChannelController@channelDelete");
+                    Route::post("/{id}/leave", "Api\ChannelController@channelLeave");
+                    Route::post("/{id}/users/make-admin", "Api\ChannelController@channelUserMakeAdmin");
+                    Route::post("/{id}/users/kick-out", "Api\ChannelController@channelUserKickOut");
+                    Route::post("/{id}/send-message", "Api\ChannelController@newMessage");
                 });
             });
         });
