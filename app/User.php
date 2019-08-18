@@ -65,4 +65,9 @@ class User extends Authenticatable
         $token = request()->header('authorization');
         return $this->findByToken($token);
     }
+
+    public function getAvatarAttribute($value)
+    {
+        return $value?:'https://www.nicepng.com/png/detail/164-1649946_happy-smiling-emoticon-face-vector-smile.png';
+    }
 }

@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
-
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -13,11 +11,6 @@ use Illuminate\Http\Request;
 |
 */
 
-header('Access-Control-Allow-Origin:  *');
-header('Access-Control-Allow-Methods:  POST, GET, OPTIONS, PUT, DELETE');
-header('Access-Control-Allow-Headers:  Content-Type, X-Auth-Token, Origin, Authorization');
-
-Route::middleware('cors')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post("/register", "Api\Auth\AuthController@register");
         Route::post("/login", "Api\Auth\AuthController@login");
@@ -25,10 +18,20 @@ Route::middleware('cors')->group(function () {
     Route::middleware('auth_user')->group(function () {
         Route::prefix('spaces')->group(function () {
             Route::get("/", "Api\SpaceController@list");
+            Route::post("/create", "Api\SpaceController@createSpace");
             Route::group(['prefix' => '{subdomain}'], function () {
                 Route::get("/", "Api\SpaceController@show");
-                Route::get("/channels/{id}", "Api\SpaceController@channelMessages");
+                Route::get("/users", "Api\SpaceController@users");
+                Route::group(['prefix' => 'channels'], function () {
+                    Route::post("/create", "Api\SpaceController@channelCreate");
+                    Route::get("/{id}", "Api\SpaceController@channelMessages");
+                    Route::get("/{id}/info", "Api\SpaceController@channelInfo");
+                    Route::get("/{id}/users", "Api\SpaceController@channelUsers");
+                    Route::post("/{id}/update", "Api\SpaceController@channelUpdate");
+                    Route::post("/{id}/delete", "Api\SpaceController@channelDelete");
+                    Route::post("/{id}/users/make-admin", "Api\SpaceController@channelUserMakeAdmin");
+                    Route::post("/{id}/users/kick-out", "Api\SpaceController@channelUserKickOut");
+                });
             });
         });
     });
-});
