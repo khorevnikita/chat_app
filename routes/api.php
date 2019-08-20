@@ -14,6 +14,8 @@
     Route::prefix('auth')->group(function () {
         Route::post("/register", "Api\Auth\AuthController@register");
         Route::post("/login", "Api\Auth\AuthController@login");
+        Route::get("/verify", "Api\Auth\AuthController@findUser");
+        Route::post("/verify", "Api\Auth\AuthController@verifyUser")->middleware("auth_user");
     });
     Route::middleware('auth_user')->group(function () {
         Route::prefix('spaces')->group(function () {
@@ -22,6 +24,7 @@
             Route::group(['prefix' => '{subdomain}'], function () {
                 Route::get("/", "Api\SpaceController@show");
                 Route::get("/users", "Api\SpaceController@users");
+                Route::post("/invite", "Api\SpaceController@inviteUser");
                 Route::get("/get-user-channel", "Api\ChannelController@getChannelFromUser");
                 Route::group(['prefix' => 'channels'], function () {
                     Route::post("/create", "Api\ChannelController@channelCreate");

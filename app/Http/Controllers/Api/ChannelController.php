@@ -18,7 +18,7 @@ class ChannelController extends Controller
 
     public function __construct()
     {
-        $this->user = User::where("api_token", request()->header('authorization'))->first();
+        $this->user = User::where("api_token", request()->header('Authorization'))->first();;
         $this->subdomain = Route::current()->parameter('subdomain');
         $this->space = $this->user->spaces->where('subdomain', $this->subdomain)->first();
 

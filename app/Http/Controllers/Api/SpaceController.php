@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\NewSpaceUser;
 use App\Space;
 use App\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class SpaceController extends Controller
 {
@@ -13,7 +15,7 @@ class SpaceController extends Controller
 
     public function __construct()
     {
-        $this->user = User::where("api_token", request()->header('authorization'))->first();
+        $this->user = User::where("api_token", request()->header('Authorization'))->first();
     }
 
     public function list(Request $request)
@@ -112,6 +114,45 @@ class SpaceController extends Controller
         return response()->json([
             'status' => 1,
             'users' => $users
+        ]);
+    }
+
+    public function inviteUser($subdomain, Request $request)
+    {
+        $space = $this->user->spaces->where("subdomain", $subdomain)->first();
+        if (!$space) {
+            return response()->json([
+                'status' => 0,
+                'msg' => 'Has no rights'
+            ]);
+        }
+
+        $request->validate([
+            'email' => "required|email"
+        ]);
+
+        $checkUser = User::where("email", $request->email)->first();
+
+        if ($checkUser) {
+            $checkAttachment = $checkUser->spaces->where("id", $space->id)->first();
+            if ($checkAttachment) {
+                return response()->json([
+                    'status' => 0,
+                    'msg' => "Already in space"
+                ]);
+            }
+            $user = $checkUser;
+        } else {
+            $user = new User();
+            $user->email = $request->email;
+            $user->username = explode("@", $request->email)[0];
+            $user->password = bcrypt(str_random(12));
+            $user->save();
+        }
+        $space->users()->attach($user->id, ['rights' => "member"]);
+        Mail::to($user)->send(new NewSpaceUser($space, $user));
+        return response()->json([
+            'status' => 1
         ]);
     }
 }

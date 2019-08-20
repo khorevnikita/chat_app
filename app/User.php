@@ -52,8 +52,10 @@ class User extends Authenticatable
         return $this->belongsToMany("App\Message")->withTimestamps()->withPivot("is_author", "read");
     }
 
-    public function find(){
-
+    public function getEmailVerificationUrlAttribute()
+    {
+        $hash = md5($this->email . "point break");
+        return "http://chatclient.local:8080/#/verify-email?email=" . urlencode($this->email) . "&hash=$hash";
     }
 
     public function findByToken($token)
@@ -63,7 +65,7 @@ class User extends Authenticatable
 
     public function authUser()
     {
-        $token = request()->header('authorization');
+        $token = request()->header('Authorization');
         return $this->findByToken($token);
     }
 
