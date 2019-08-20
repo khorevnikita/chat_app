@@ -15,7 +15,7 @@ class SpaceController extends Controller
 
     public function __construct()
     {
-        $this->user = User::where("api_token", request()->header('Authorization'))->first();
+        $this->user = User::authUser();
     }
 
     public function list(Request $request)
@@ -58,7 +58,7 @@ class SpaceController extends Controller
             $q->where("users.id", "!=", $user->id);
         }])->with(['channels' => function ($q) use ($user) {
             $q->where(function ($q) use ($user) {
-                $q->where("access", "visible")->orWhereHas("users", function ($q) use ($user) {
+                $q->whereHas("users", function ($q) use ($user) {
                     $q->where("users.id", $user->id);
                 });
             })->where("type", "public");

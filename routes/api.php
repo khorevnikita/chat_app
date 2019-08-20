@@ -16,6 +16,8 @@
         Route::post("/login", "Api\Auth\AuthController@login");
         Route::get("/verify", "Api\Auth\AuthController@findUser");
         Route::post("/verify", "Api\Auth\AuthController@verifyUser")->middleware("auth_user");
+        Route::get("/profile", "Api\Auth\AuthController@getProfile")->middleware("auth_user");
+        Route::post("/profile", "Api\Auth\AuthController@setProfile")->middleware("auth_user");
     });
     Route::middleware('auth_user')->group(function () {
         Route::prefix('spaces')->group(function () {

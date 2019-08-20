@@ -58,15 +58,15 @@ class User extends Authenticatable
         return "http://chatclient.local:8080/#/verify-email?email=" . urlencode($this->email) . "&hash=$hash";
     }
 
-    public function findByToken($token)
+    public static function findByToken($token)
     {
         return User::where("api_token", $token)->first();
     }
 
-    public function authUser()
+    public static function authUser()
     {
         $token = request()->header('Authorization');
-        return $this->findByToken($token);
+        return self::findByToken($token);
     }
 
     public function getAvatarAttribute($value)

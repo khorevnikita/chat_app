@@ -112,7 +112,7 @@ class AuthController extends Controller
 
     public function verifyUser(Request $request)
     {
-        $user = User::where("api_token", request()->header('Authorization'))->first();
+        $user = User::authUser();
 
         Validator::make($request->all(), [
             'username' => [
@@ -137,6 +137,56 @@ class AuthController extends Controller
 
         return response()->json([
             'status' => 1
+        ]);
+    }
+
+    public function getProfile()
+    {
+        $user = User::authUser();
+
+        if ($user) {
+            $user = $user->makeVisible(['email', 'phone']);
+        }
+
+        return response()->json([
+            'status' => 1,
+            'user' => $user
+        ]);
+    }
+
+    public function setProfile(Request $request)
+    {
+        $user = User::authUser();
+
+        Validator::make($request->all(), [
+            'username' => [
+                'required',
+                "string",
+                Rule::unique('users')->ignore($user),
+            ],
+            'name' => ['required', 'string', 'max:255'],
+            'surname' => ['required', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:255'],
+            'password' => ['sometimes', 'required', 'string', 'min:6', 'confirmed'],
+            'email' => [
+                'sometimes',
+                'required',
+                "string",
+                "email",
+                Rule::unique('users')->ignore($user),
+            ],
+
+        ])->validate();
+
+        $user->name = $request->name;
+        $user->surname = $request->surname;
+        $user->username = $request->username;
+        $user->phone = $request->phone;
+
+        $user->save();
+
+        return response()->json([
+            "status" => 1
         ]);
     }
 
